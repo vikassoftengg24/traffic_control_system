@@ -1,12 +1,12 @@
 package com.trafficLight.api;
 
+import com.trafficLight.model.Direction;
 import com.trafficLight.model.Intersection;
+import com.trafficLight.model.LightState;
+import com.trafficLight.model.StateChangeEvent;
 import com.trafficLight.service.IntersectionRegistry;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.*;
 
 public class TrafficLightController {
@@ -81,6 +81,36 @@ public class TrafficLightController {
         if (future != null) {
             future.cancel(false);
         }
+    }
+
+    // ==================== Light State Management ====================
+
+    /**
+     * Gets the current state of all lights at an intersection.
+     */
+    public Intersection.IntersectionSnapshot getState(String intersectionId) {
+        return getIntersectionOrThrow(intersectionId).snapshot();
+    }
+
+    /**
+     * Sets the state of a specific light.
+     */
+    public StateChangeEvent setLightState(String intersectionId, Direction direction, LightState state) {
+        return getIntersectionOrThrow(intersectionId).setLightState(direction, state);
+    }
+
+    /**
+     * Sets multiple light states atomically.
+     */
+    public List<StateChangeEvent> setLightStates(String intersectionId, Map<Direction, LightState> states) {
+        return getIntersectionOrThrow(intersectionId).setLightStates(states);
+    }
+
+    // ==================== Helper Methods ====================
+
+    private Intersection getIntersectionOrThrow(String id) {
+        return registry.get(id)
+                .orElseThrow(() -> new IllegalArgumentException("Intersection not found: " + id));
     }
 
     /**

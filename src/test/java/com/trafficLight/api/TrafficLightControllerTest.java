@@ -4,6 +4,7 @@ import com.trafficLight.exception.ConflictingStateException;
 import com.trafficLight.model.Direction;
 import com.trafficLight.model.Intersection;
 import com.trafficLight.model.LightState;
+import com.trafficLight.model.StateChangeEvent;
 import org.junit.jupiter.api.*;
 
 import java.util.List;
