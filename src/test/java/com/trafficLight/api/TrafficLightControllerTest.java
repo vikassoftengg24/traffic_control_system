@@ -11,8 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
 public class TrafficLightControllerTest {
     private TrafficLightController controller;
@@ -164,6 +163,54 @@ public class TrafficLightControllerTest {
             assertThatThrownBy(() ->
                     controller.setLightState("INT-001", Direction.EAST, LightState.GREEN))
                     .isInstanceOf(ConflictingStateException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Pause and Resume")
+    class PauseAndResume {
+
+        @BeforeEach
+        void setUp() {
+            controller.createStandardIntersection("INT-001", "Test");
+        }
+
+        @Test
+        @DisplayName("pause sets all lights to red")
+        void pauseSetsAllLightsToRed() {
+            controller.setLightState("INT-001", Direction.NORTH, LightState.GREEN);
+
+            List<StateChangeEvent> events = controller.pause("INT-001");
+
+            assertThat(events).isNotEmpty();
+            Intersection.IntersectionSnapshot snapshot = controller.getState("INT-001");
+            assertThat(snapshot.paused()).isTrue();
+            assertThat(snapshot.lights().values())
+                    .allMatch(light -> light.state() == LightState.RED);
+        }
+
+        @Test
+        @DisplayName("resume allows state changes")
+        void resumeAllowsStateChanges() {
+            controller.pause("INT-001");
+            controller.resume("INT-001");
+
+            assertThatNoException().isThrownBy(() ->
+                    controller.setLightState("INT-001", Direction.NORTH, LightState.GREEN));
+        }
+
+        @Test
+        @DisplayName("emergency stop pauses all intersections")
+        void emergencyStopPausesAllIntersections() {
+            controller.createStandardIntersection("INT-002", "Second");
+            controller.setLightState("INT-001", Direction.NORTH, LightState.GREEN);
+            controller.setLightState("INT-002", Direction.EAST, LightState.GREEN);
+
+            Map<String, List<StateChangeEvent>> results = controller.emergencyStopAll();
+
+            assertThat(results).hasSize(2);
+            assertThat(controller.getState("INT-001").paused()).isTrue();
+            assertThat(controller.getState("INT-002").paused()).isTrue();
         }
     }
 }

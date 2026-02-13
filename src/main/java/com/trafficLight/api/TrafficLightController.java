@@ -142,4 +142,31 @@ public class TrafficLightController {
          */
         void advancePhase(Intersection intersection);
     }
+
+    // ==================== Pause/Resume ====================
+
+    /**
+     * Pauses an intersection (all lights go red).
+     */
+    public List<StateChangeEvent> pause(String intersectionId) {
+        return getIntersectionOrThrow(intersectionId).pause();
+    }
+
+    /**
+     * Resumes an intersection after being paused.
+     */
+    public void resume(String intersectionId) {
+        getIntersectionOrThrow(intersectionId).resume();
+    }
+
+    /**
+     * Emergency stop - pauses all intersections.
+     */
+    public Map<String, List<StateChangeEvent>> emergencyStopAll() {
+        Map<String, List<StateChangeEvent>> results = new HashMap<>();
+        for (Intersection intersection : registry.getAll()) {
+            results.put(intersection.getId(), intersection.pause());
+        }
+        return results;
+    }
 }
