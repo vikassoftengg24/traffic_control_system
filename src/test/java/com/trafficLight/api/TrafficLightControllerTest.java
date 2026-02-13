@@ -5,6 +5,7 @@ import com.trafficLight.model.Direction;
 import com.trafficLight.model.Intersection;
 import com.trafficLight.model.LightState;
 import com.trafficLight.model.StateChangeEvent;
+import com.trafficLight.service.StandardLightSequence;
 import org.junit.jupiter.api.*;
 
 import java.time.Instant;

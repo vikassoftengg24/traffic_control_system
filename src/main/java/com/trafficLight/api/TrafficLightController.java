@@ -251,4 +251,47 @@ public class TrafficLightController {
             return Collections.unmodifiableList(allEvents);
         }, scheduler);
     }
+
+
+    // ==================== Sequence Management ====================
+
+    /**
+     * Starts an automated light sequence at an intersection.
+     *
+     * @param intersectionId  the intersection ID
+     * @param sequence        the sequence to run
+     * @param cycleDurationMs how long each phase lasts
+     */
+    public void startSequence(String intersectionId, LightSequence sequence, long cycleDurationMs) {
+        Intersection intersection = getIntersectionOrThrow(intersectionId);
+
+        // Stop any existing sequence
+        stopSequence(intersectionId);
+
+        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(
+                () -> {
+                    if (!intersection.isPaused()) {
+                        try {
+                            sequence.advancePhase(intersection);
+                        } catch (Exception e) {
+                            // Log error but continue sequence
+                            System.err.println("Error in sequence for " + intersectionId + ": " + e.getMessage());
+                        }
+                    }
+                },
+                0,
+                cycleDurationMs,
+                TimeUnit.MILLISECONDS
+        );
+
+        activeSequences.put(intersectionId, future);
+    }
+
+    /**
+     * Checks if a sequence is running at an intersection.
+     */
+    public boolean isSequenceRunning(String intersectionId) {
+        ScheduledFuture<?> future = activeSequences.get(intersectionId);
+        return future != null && !future.isCancelled() && !future.isDone();
+    }
 }
