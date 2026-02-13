@@ -193,4 +193,62 @@ public class TrafficLightController {
     public List<StateChangeEvent> getHistorySince(String intersectionId, Instant since) {
         return getIntersectionOrThrow(intersectionId).getHistorySince(since);
     }
+
+    /**
+     * Transitions lights safely for a phase change (e.g., NS green -> EW green).
+     * This handles the yellow transition automatically.
+     */
+    public CompletableFuture<List<StateChangeEvent>> transitionPhase(
+            String intersectionId,
+            Set<Direction> newGreenDirections,
+            long yellowDurationMs) {
+
+        Intersection intersection = getIntersectionOrThrow(intersectionId);
+
+        return CompletableFuture.supplyAsync(() -> {
+            List<StateChangeEvent> allEvents = new ArrayList<>();
+
+            // Get current green directions
+            Set<Direction> currentGreen = intersection.getGreenDirections();
+
+            // Directions that need to turn yellow then red
+            Set<Direction> toTurnOff = new HashSet<>(currentGreen);
+            toTurnOff.removeAll(newGreenDirections);
+
+            // Set directions to yellow
+            if (!toTurnOff.isEmpty()) {
+                Map<Direction, LightState> yellowStates = new HashMap<>();
+                for (Direction d : toTurnOff) {
+                    yellowStates.put(d, LightState.YELLOW);
+                }
+                allEvents.addAll(intersection.setLightStates(yellowStates));
+
+                // Wait for yellow duration
+                try {
+                    Thread.sleep(yellowDurationMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Phase transition interrupted", e);
+                }
+
+                // Set to red
+                Map<Direction, LightState> redStates = new HashMap<>();
+                for (Direction d : toTurnOff) {
+                    redStates.put(d, LightState.RED);
+                }
+                allEvents.addAll(intersection.setLightStates(redStates));
+            }
+
+            // Set new directions to green
+            if (!newGreenDirections.isEmpty()) {
+                Map<Direction, LightState> greenStates = new HashMap<>();
+                for (Direction d : newGreenDirections) {
+                    greenStates.put(d, LightState.GREEN);
+                }
+                allEvents.addAll(intersection.setLightStates(greenStates));
+            }
+
+            return Collections.unmodifiableList(allEvents);
+        }, scheduler);
+    }
 }
