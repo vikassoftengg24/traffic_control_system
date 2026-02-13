@@ -7,6 +7,7 @@ import com.trafficLight.model.LightState;
 import com.trafficLight.model.StateChangeEvent;
 import org.junit.jupiter.api.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -211,6 +212,57 @@ public class TrafficLightControllerTest {
             assertThat(results).hasSize(2);
             assertThat(controller.getState("INT-001").paused()).isTrue();
             assertThat(controller.getState("INT-002").paused()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("History")
+    class History {
+
+        @BeforeEach
+        void setUp() {
+            controller.createStandardIntersection("INT-001", "Test");
+        }
+
+        @Test
+        @DisplayName("tracks state change history")
+        void tracksStateChangeHistory() {
+            controller.setLightState("INT-001", Direction.NORTH, LightState.GREEN);
+            controller.setLightState("INT-001", Direction.NORTH, LightState.YELLOW);
+
+            List<StateChangeEvent> history = controller.getHistory("INT-001");
+
+            // 4 initial + 2 changes
+            assertThat(history).hasSize(6);
+        }
+
+        @Test
+        @DisplayName("filters history by direction")
+        void filtersHistoryByDirection() {
+            controller.setLightState("INT-001", Direction.NORTH, LightState.GREEN);
+            controller.setLightState("INT-001", Direction.SOUTH, LightState.GREEN);
+
+            List<StateChangeEvent> northHistory = controller.getHistory("INT-001", Direction.NORTH);
+
+            assertThat(northHistory).hasSize(2); // initial + change
+            assertThat(northHistory).allMatch(e -> e.direction() == Direction.NORTH);
+        }
+
+        @Test
+        @DisplayName("filters history by timestamp")
+        void filtersHistoryByTimestamp() throws InterruptedException {
+            controller.setLightState("INT-001", Direction.NORTH, LightState.GREEN);
+
+            Thread.sleep(50);
+            Instant cutoff = Instant.now();
+            Thread.sleep(50);
+
+            controller.setLightState("INT-001", Direction.NORTH, LightState.YELLOW);
+
+            List<StateChangeEvent> recentHistory = controller.getHistorySince("INT-001", cutoff);
+
+            assertThat(recentHistory).hasSize(1);
+            assertThat(recentHistory.getFirst().newState()).isEqualTo(LightState.YELLOW);
         }
     }
 }

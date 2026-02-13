@@ -6,6 +6,7 @@ import com.trafficLight.model.LightState;
 import com.trafficLight.model.StateChangeEvent;
 import com.trafficLight.service.IntersectionRegistry;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -168,5 +169,28 @@ public class TrafficLightController {
             results.put(intersection.getId(), intersection.pause());
         }
         return results;
+    }
+
+    // ==================== History ====================
+
+    /**
+     * Gets the complete timing history for an intersection.
+     */
+    public List<StateChangeEvent> getHistory(String intersectionId) {
+        return getIntersectionOrThrow(intersectionId).getHistory();
+    }
+
+    /**
+     * Gets history for a specific direction at an intersection.
+     */
+    public List<StateChangeEvent> getHistory(String intersectionId, Direction direction) {
+        return getIntersectionOrThrow(intersectionId).getHistory(direction);
+    }
+
+    /**
+     * Gets history since a specific time.
+     */
+    public List<StateChangeEvent> getHistorySince(String intersectionId, Instant since) {
+        return getIntersectionOrThrow(intersectionId).getHistorySince(since);
     }
 }
