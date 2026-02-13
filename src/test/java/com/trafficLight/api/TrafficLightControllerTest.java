@@ -11,6 +11,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -263,6 +265,43 @@ public class TrafficLightControllerTest {
 
             assertThat(recentHistory).hasSize(1);
             assertThat(recentHistory.getFirst().newState()).isEqualTo(LightState.YELLOW);
+        }
+    }
+
+    @Nested
+    @DisplayName("Phase Transition")
+    class PhaseTransition {
+
+        @BeforeEach
+        void setUp() {
+            controller.createStandardIntersection("INT-001", "Test");
+        }
+
+        @Test
+        @DisplayName("transitions phase with yellow interval")
+        void transitionsPhaseWithYellowInterval() throws Exception {
+            // Start with NS green
+            controller.setLightStates("INT-001", Map.of(
+                    Direction.NORTH, LightState.GREEN,
+                    Direction.SOUTH, LightState.GREEN
+            ));
+
+            // Transition to EW green
+            List<StateChangeEvent> events = controller.transitionPhase(
+                    "INT-001",
+                    Set.of(Direction.EAST, Direction.WEST),
+                    50
+            ).get(5, TimeUnit.SECONDS);
+
+            // Should have: NS yellow, NS red, EW green
+            assertThat(events).isNotEmpty();
+
+            // Final state should be EW green, NS red
+            Intersection.IntersectionSnapshot snapshot = controller.getState("INT-001");
+            assertThat(snapshot.lights().get(Direction.NORTH).state()).isEqualTo(LightState.RED);
+            assertThat(snapshot.lights().get(Direction.SOUTH).state()).isEqualTo(LightState.RED);
+            assertThat(snapshot.lights().get(Direction.EAST).state()).isEqualTo(LightState.GREEN);
+            assertThat(snapshot.lights().get(Direction.WEST).state()).isEqualTo(LightState.GREEN);
         }
     }
 }
