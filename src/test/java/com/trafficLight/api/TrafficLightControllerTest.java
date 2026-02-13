@@ -304,4 +304,39 @@ public class TrafficLightControllerTest {
             assertThat(snapshot.lights().get(Direction.WEST).state()).isEqualTo(LightState.GREEN);
         }
     }
+
+    @Nested
+    @DisplayName("Concurrency")
+    class Concurrency {
+
+        @Test
+        @DisplayName("handles concurrent operations across multiple intersections")
+        void handlesConcurrentOperationsAcrossMultipleIntersections() throws InterruptedException {
+            // Create multiple intersections
+            for (int i = 0; i < 5; i++) {
+                controller.createStandardIntersection("INT-" + i, "Intersection " + i);
+            }
+
+            // Start sequences on all
+            for (int i = 0; i < 5; i++) {
+                controller.startSequence("INT-" + i, StandardLightSequence.twoPhase(), 20);
+            }
+
+            // Let them run
+            Thread.sleep(200);
+
+            // All should still be running without errors
+            for (int i = 0; i < 5; i++) {
+                assertThat(controller.isSequenceRunning("INT-" + i)).isTrue();
+            }
+
+            // Emergency stop all
+            controller.emergencyStopAll();
+
+            // All should be paused
+            for (int i = 0; i < 5; i++) {
+                assertThat(controller.getState("INT-" + i).paused()).isTrue();
+            }
+        }
+    }
 }
